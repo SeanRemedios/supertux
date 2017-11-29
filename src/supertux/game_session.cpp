@@ -23,6 +23,7 @@
 #include "control/input_manager.hpp"
 #include "gui/menu.hpp"
 #include "gui/menu_manager.hpp"
+#include "math/random_generator.hpp"
 #include "object/camera.hpp"
 #include "object/endsequence_fireworks.hpp"
 #include "object/endsequence_walkleft.hpp"
@@ -53,13 +54,13 @@
 #endif
 
 GameSession::GameSession(const std::string& levelfile_, Savegame& savegame, Statistics* statistics) :
-  GameSessionRecorder(),
   reset_button(false),
   level(),
   old_level(),
   statistics_backdrop(Surface::create("images/engine/menu/score-backdrop.png")),
   scripts(),
   currentsector(nullptr),
+  levelnb(),
   pause_menu_frame(),
   end_sequence(0),
   game_pause(false),
@@ -71,6 +72,10 @@ GameSession::GameSession(const std::string& levelfile_, Savegame& savegame, Stat
   newspawnpoint(),
   best_level_statistics(statistics),
   m_savegame(savegame),
+  capture_demo_stream(0),
+  capture_file(),
+  playback_demo_stream(0),
+  demo_controller(0),
   play_time(0),
   edit_mode(false),
   levelintro_shown(false),
@@ -159,13 +164,91 @@ GameSession::restart_level(bool after_death)
     currentsector->play_music(LEVEL_MUSIC);
   }
 
-  start_recording();
+  if(!capture_file.empty()) {
+    int newSeed=0;               // next run uses a new seed
+    while (newSeed == 0)            // which is the next non-zero random num.
+      newSeed = gameRandom.rand();
+    g_config->random_seed = gameRandom.srand(newSeed);
+    log_info << "Next run uses random seed " << g_config->random_seed <<std::endl;
+    record_demo(capture_file);
+  }
 
   return (0);
 }
 
 GameSession::~GameSession()
 {
+  delete capture_demo_stream;
+  delete playback_demo_stream;
+  delete demo_controller;
+}
+
+void
+GameSession::record_demo(const std::string& filename)
+{
+  delete capture_demo_stream;
+
+  capture_demo_stream = new std::ofstream(filename.c_str());
+  if(!capture_demo_stream->good()) {
+    std::stringstream msg;
+    msg << "Couldn't open demo file '" << filename << "' for writing.";
+    throw std::runtime_error(msg.str());
+  }
+  capture_file = filename;
+
+  char buf[30];                            // save the seed in the demo file
+  snprintf(buf, sizeof(buf), "random_seed=%10d", g_config->random_seed);
+  for (int i=0; i==0 || buf[i-1]; i++)
+    capture_demo_stream->put(buf[i]);
+}
+
+int
+GameSession::get_demo_random_seed(const std::string& filename) const
+{
+  std::istream* test_stream = new std::ifstream(filename.c_str());
+  if(test_stream->good()) {
+    char buf[30];                     // recall the seed from the demo file
+    int seed;
+    for (int i=0; i<30 && (i==0 || buf[i-1]); i++)
+      test_stream->get(buf[i]);
+    if (sscanf(buf, "random_seed=%10d", &seed) == 1) {
+      log_info << "Random seed " << seed << " from demo file" << std::endl;
+      delete test_stream;
+      test_stream = nullptr;
+      return seed;
+    }
+    else
+      log_info << "Demo file contains no random number" << std::endl;
+  }
+  delete test_stream;
+  test_stream = nullptr;
+  return 0;
+}
+
+void
+GameSession::play_demo(const std::string& filename)
+{
+  delete playback_demo_stream;
+  delete demo_controller;
+
+  playback_demo_stream = new std::ifstream(filename.c_str());
+  if(!playback_demo_stream->good()) {
+    std::stringstream msg;
+    msg << "Couldn't open demo file '" << filename << "' for reading.";
+    throw std::runtime_error(msg.str());
+  }
+
+  Player& tux = *currentsector->player;
+  demo_controller = new CodeController();
+  tux.set_controller(demo_controller);
+
+  // skip over random seed, if it exists in the file
+  char buf[30];                            // ascii decimal seed
+  int seed;
+  for (int i=0; i<30 && (i==0 || buf[i-1]); i++)
+    playback_demo_stream->get(buf[i]);
+  if (sscanf(buf, "random_seed=%010d", &seed) != 1)
+    playback_demo_stream->seekg(0);     // old style w/o seed, restart at beg
 }
 
 void
@@ -181,7 +264,12 @@ GameSession::on_escape_press()
     return;   // don't let the player open the menu, when he is dying
   }
 
-  toggle_pause();
+  if(!level->on_menukey_script.empty()) {
+    std::istringstream in(level->on_menukey_script);
+    run_script(in, "OnMenuKeyScript");
+  } else {
+    toggle_pause();
+  }
 }
 
 void
@@ -247,6 +335,74 @@ GameSession::force_ghost_mode()
   currentsector->get_players()[0]->set_ghost_mode(true);
 }
 
+HSQUIRRELVM
+GameSession::run_script(std::istream& in, const std::string& sourcename)
+{
+  using namespace scripting;
+
+  // garbage collect thread list
+  for(ScriptList::iterator i = scripts.begin();
+      i != scripts.end(); ) {
+    HSQOBJECT& object = *i;
+    HSQUIRRELVM vm = object_to_vm(object);
+
+    if(sq_getvmstate(vm) != SQ_VMSTATE_SUSPENDED) {
+      sq_release(global_vm, &object);
+      i = scripts.erase(i);
+      continue;
+    }
+
+    ++i;
+  }
+
+  HSQOBJECT object = create_thread(global_vm);
+  scripts.push_back(object);
+
+  HSQUIRRELVM vm = object_to_vm(object);
+
+  compile_and_run(vm, in, sourcename);
+
+  return vm;
+}
+
+void
+GameSession::process_events()
+{
+  // playback a demo?
+  if(playback_demo_stream != 0) {
+    demo_controller->update();
+    char left = false;
+    char right = false;
+    char up = false;
+    char down = false;
+    char jump = false;
+    char action = false;
+    playback_demo_stream->get(left);
+    playback_demo_stream->get(right);
+    playback_demo_stream->get(up);
+    playback_demo_stream->get(down);
+    playback_demo_stream->get(jump);
+    playback_demo_stream->get(action);
+    demo_controller->press(Controller::LEFT, left);
+    demo_controller->press(Controller::RIGHT, right);
+    demo_controller->press(Controller::UP, up);
+    demo_controller->press(Controller::DOWN, down);
+    demo_controller->press(Controller::JUMP, jump);
+    demo_controller->press(Controller::ACTION, action);
+  }
+
+  // save input for demo?
+  if(capture_demo_stream != 0) {
+    Controller *controller = InputManager::current()->get_controller();
+    capture_demo_stream ->put(controller->hold(Controller::LEFT));
+    capture_demo_stream ->put(controller->hold(Controller::RIGHT));
+    capture_demo_stream ->put(controller->hold(Controller::UP));
+    capture_demo_stream ->put(controller->hold(Controller::DOWN));
+    capture_demo_stream ->put(controller->hold(Controller::JUMP));
+    capture_demo_stream ->put(controller->hold(Controller::ACTION));
+  }
+}
+
 void
 GameSession::check_end_conditions()
 {
@@ -268,13 +424,6 @@ GameSession::draw(DrawingContext& context)
 
   if(game_pause)
     draw_pause(context);
-}
-
-
-void
-GameSession::on_window_resize()
-{
-  currentsector->on_window_resize();
 }
 
 void

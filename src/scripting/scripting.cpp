@@ -45,16 +45,10 @@ __attribute__((__format__ (__printf__, 2, 0)))
 void printfunc(HSQUIRRELVM, const char* fmt, ...)
 {
   char buf[4096];
-  char separator[] = "\n";
   va_list arglist;
   va_start(arglist, fmt);
   vsnprintf(buf, sizeof(buf), fmt, arglist);
-  char* ptr = strtok(buf, separator);
-  while(ptr != NULL)
-  {
-    ConsoleBuffer::output << "[SCRIPTING] " << ptr << std::endl;
-    ptr = strtok(NULL, separator);
-  }
+  ConsoleBuffer::output << "[SQUIRREL] " << (const char*) buf << std::flush;
   va_end(arglist);
 }
 
@@ -94,8 +88,10 @@ Scripting::Scripting(bool enable_debugger)
     throw SquirrelError(global_vm, "Couldn't register string lib");
 
   // remove rand and srand calls from sqstdmath, we'll provide our own
-  scripting::delete_table_entry(global_vm, "srand");
-  scripting::delete_table_entry(global_vm, "rand");
+  sq_pushstring(global_vm, "srand", -1);
+  sq_deleteslot(global_vm, -2, SQFalse);
+  sq_pushstring(global_vm, "rand", -1);
+  sq_deleteslot(global_vm, -2, SQFalse);
 
   // register supertux API
   register_supertux_wrapper(global_vm);

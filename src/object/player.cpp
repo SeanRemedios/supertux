@@ -17,6 +17,8 @@
 
 #include "object/player.hpp"
 
+#include "supertux/menu/main_menu.hpp"
+
 #include "audio/sound_manager.hpp"
 #include "badguy/badguy.hpp"
 #include "control/input_manager.hpp"
@@ -39,6 +41,11 @@
 #include <math.h>
 
 //#define SWIMMING
+
+extern bool badguys;
+extern bool normalmode;
+int prevCoins;
+bool FF = false;
 
 namespace {
 static const float BUTTJUMP_MIN_VELOCITY_Y = 400.0f;
@@ -192,6 +199,16 @@ Player::Player(PlayerStatus* _player_status, const std::string& name_) :
   lightsprite->set_blend(Blend(GL_SRC_ALPHA, GL_ONE));
 
   physic.reset();
+
+  if (FF == false && badguys == true) {
+      prevCoins = get_coins();
+      FF = true;
+    }
+  if (badguys == false) {
+    add_coins(get_coins()*-1 + 30); // 30 seconds
+  } else {
+    add_coins(get_coins()*-1 + prevCoins);
+  }
 }
 
 Player::~Player()
@@ -285,15 +302,27 @@ Player::trigger_sequence(Sequence seq)
   GameSession::current()->start_sequence(seq);
 }
 
+float coin_timer = 1;
+
 void
 Player::update(float elapsed_time)
 {
+
+  if (badguys == false && FF == true) {
+    coin_timer -= elapsed_time;
+    if(coin_timer < 0){
+      add_coins(-1);
+      coin_timer = 1;
+    }
+  }
+
   if( no_water ){
     swimming = false;
   }
   no_water = true;
 
-  if(dying && dying_timer.check()) {
+  if((get_coins() <= 0 && badguys == false) || (dying && dying_timer.check())) {
+    dying = true;
     Sector::current()->stop_looping_sounds();
     set_bonus(NO_BONUS, true);
     dead = true;

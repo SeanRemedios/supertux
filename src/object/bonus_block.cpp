@@ -16,6 +16,8 @@
 
 #include "object/bonus_block.hpp"
 
+#include "supertux/menu/main_menu.hpp"
+
 #include "audio/sound_manager.hpp"
 #include "badguy/badguy.hpp"
 #include "object/flower.hpp"
@@ -39,6 +41,8 @@
 
 #include <stdexcept>
 #include <physfs.h>
+
+extern bool badguys;
 
 BonusBlock::BonusBlock(const Vector& pos, int data) :
   Block(SpriteManager::current()->create("images/objects/bonus_block/bonusblock.sprite")),

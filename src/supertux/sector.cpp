@@ -131,7 +131,12 @@ Sector::~Sector()
     log_warning << err.what() << std::endl;
   }
 
-  release_scripts(global_vm, scripts, sector_table);
+
+  for(auto& script : scripts) {
+    sq_release(global_vm, &script);
+  }
+  sq_release(global_vm, &sector_table);
+  sq_collectgarbage(global_vm);
 
   update_game_objects();
   assert(gameobjects_new.size() == 0);
@@ -221,7 +226,10 @@ Sector::activate(const Vector& player_pos)
     // register sectortable as sector in scripting
     HSQUIRRELVM vm = scripting::global_vm;
     sq_pushroottable(vm);
-    scripting::store_object(vm, "sector", sector_table);
+    sq_pushstring(vm, "sector", -1);
+    sq_pushobject(vm, sector_table);
+    if(SQ_FAILED(sq_createslot(vm, -3)))
+      throw scripting::SquirrelError(vm, "Couldn't set sector in roottable");
     sq_pop(vm, 1);
 
     for(auto& object : gameobjects) {
@@ -291,7 +299,9 @@ Sector::deactivate()
   // remove sector entry from global vm
   HSQUIRRELVM vm = scripting::global_vm;
   sq_pushroottable(vm);
-  scripting::delete_table_entry(vm, "sector");
+  sq_pushstring(vm, "sector", -1);
+  if(SQ_FAILED(sq_deleteslot(vm, -2, SQFalse)))
+    throw scripting::SquirrelError(vm, "Couldn't unset sector in roottable");
   sq_pop(vm, 1);
 
   for(const auto& object: gameobjects) {

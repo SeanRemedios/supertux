@@ -18,6 +18,8 @@
 
 #include "object/block.hpp"
 
+#include "supertux/menu/main_menu.hpp"
+
 #include "audio/sound_manager.hpp"
 #include "badguy/badguy.hpp"
 #include "badguy/bomb.hpp"
@@ -31,6 +33,8 @@
 #include "supertux/constants.hpp"
 #include "supertux/sector.hpp"
 #include "util/reader_mapping.hpp"
+
+extern bool badguys;
 
 static const float BOUNCY_BRICK_MAX_OFFSET = 8;
 static const float BOUNCY_BRICK_SPEED = 90;
@@ -112,7 +116,9 @@ Block::collision(GameObject& other, const CollisionHit& )
     // Coins get collected
     auto coin = dynamic_cast<Coin*> (&other);
     if(coin) {
-      coin->collect();
+      if (badguys == true) {
+       coin->collect();
+      }
     }
 
     //Eggs get jumped

@@ -311,16 +311,6 @@ void compile_and_run(HSQUIRRELVM vm, std::istream& in,
   }
 }
 
-void release_scripts(HSQUIRRELVM vm, ScriptList& scripts, HSQOBJECT& root_table)
-{
-  for(auto& script: scripts)
-  {
-    sq_release(vm, &script);
-  }
-  sq_release(vm, &root_table);
-  sq_collectgarbage(vm);
-}
-
 HSQOBJECT create_thread(HSQUIRRELVM vm)
 {
   HSQUIRRELVM new_vm = sq_newthread(vm, 64);
@@ -358,24 +348,6 @@ HSQUIRRELVM object_to_vm(HSQOBJECT object)
 
 // begin: serialization functions
 
-void begin_table(HSQUIRRELVM vm, const char* name)
-{
-  sq_pushstring(vm, name, -1);
-  sq_newtable(vm);
-}
-
-void end_table(HSQUIRRELVM vm, const char* name)
-{
-  if(SQ_FAILED(sq_createslot(vm, -3)))
-    throw scripting::SquirrelError(vm, "Failed to create '" + std::string(name) + "' table entry");
-}
-
-void create_empty_table(HSQUIRRELVM vm, const char* name)
-{
-  begin_table(vm, name);
-  end_table(vm, name);
-}
-
 void store_float(HSQUIRRELVM vm, const char* name, float val)
 {
   sq_pushstring(vm, name, -1);
@@ -406,14 +378,6 @@ void store_bool(HSQUIRRELVM vm, const char* name, bool val)
   sq_pushbool(vm, val ? SQTrue : SQFalse);
   if(SQ_FAILED(sq_createslot(vm, -3)))
     throw scripting::SquirrelError(vm, "Couldn't add float value to table");
-}
-
-void store_object(HSQUIRRELVM vm, const char* name, const HSQOBJECT& val)
-{
-  sq_pushstring(vm, name, -1);
-  sq_pushobject(vm, val);
-  if(SQ_FAILED(sq_createslot(vm, -3)))
-    throw scripting::SquirrelError(vm, "Couldn't add object value to table");
 }
 
 bool has_float(HSQUIRRELVM vm, const char* name)
@@ -581,16 +545,6 @@ void get_or_create_table_entry(HSQUIRRELVM vm, const std::string& name)
   else
   {
     // successfully placed result on stack
-  }
-}
-
-void delete_table_entry(HSQUIRRELVM vm, const char* name)
-{
-  sq_pushstring(vm, name, -1);
-  if(SQ_FAILED(sq_deleteslot(vm, -2, false)))
-  {
-    // Something failed while deleting the table entry.
-    // Key doesn't exist?
   }
 }
 

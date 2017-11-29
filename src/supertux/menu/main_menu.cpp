@@ -36,6 +36,9 @@
 #include "supertux/world.hpp"
 #include "util/gettext.hpp"
 
+bool badguys = true; // Added by Sean
+bool normalmode = false;
+
 MainMenu::MainMenu()
 {
   set_center_pos(SCREEN_WIDTH/2, SCREEN_HEIGHT/2 + 35);
@@ -44,6 +47,7 @@ MainMenu::MainMenu()
   add_entry(MNID_ADDONS, _("Add-ons"));
   add_submenu(_("Options"), MenuStorage::OPTIONS_MENU);
   add_entry(MNID_LEVELEDITOR, _("Level Editor"));
+  add_entry(MNID_TIMETRIAL, _("Time Trials")); // Added by Sean
   add_entry(MNID_CREDITS, _("Credits"));
   add_entry(MNID_QUITMAINMENU, _("Quit"));
 }
@@ -57,11 +61,13 @@ MainMenu::on_window_resize()
 void
 MainMenu::menu_action(MenuItem* item)
 {
+  badguys = true; // Added by Sean
   switch (item->id)
   {
 
     case MNID_STARTGAME:
       // World selection menu
+      normalmode = true;
       MenuManager::instance().push_menu(MenuStorage::WORLDSET_MENU);
       break;
 
@@ -86,6 +92,14 @@ MainMenu::menu_action(MenuItem* item)
         ScreenManager::current()->push_screen(move(screen),move(fade));
         //Editor::current()->setup();
       }
+      break;
+
+    // Added by Sean
+    case MNID_TIMETRIAL:
+      // World selection menu
+      normalmode = false;
+      badguys = false;
+      MenuManager::instance().push_menu(MenuStorage::WORLDSET_MENU);
       break;
 
     case MNID_QUITMAINMENU:

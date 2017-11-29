@@ -16,6 +16,8 @@
 
 #include "badguy/badguy.hpp"
 
+#include "supertux/menu/main_menu.hpp"
+
 #include "audio/sound_manager.hpp"
 #include "object/bullet.hpp"
 #include "object/camera.hpp"
@@ -40,8 +42,10 @@ static const float SQUISH_TIME = 2;
 static const float GEAR_TIME = 2;
 static const float BURN_TIME = 1;
 
-static const float X_OFFSCREEN_DISTANCE = 3840;
-static const float Y_OFFSCREEN_DISTANCE = 2160;
+static const float X_OFFSCREEN_DISTANCE = 1280;
+static const float Y_OFFSCREEN_DISTANCE = 800;
+
+extern bool badguys;
 
 BadGuy::BadGuy(const Vector& pos, const std::string& sprite_name_, int layer_,
                const std::string& light_sprite_name) :
@@ -203,6 +207,9 @@ BadGuy::update(float elapsed_time)
   switch(state) {
     case STATE_ACTIVE:
       is_active_flag = true;
+      if (badguys == false) { // Added by Sean
+        remove_me();          // |
+      }                       // |
       if (Editor::is_active()) {
         break;
       }
@@ -561,7 +568,8 @@ BadGuy::run_dead_script()
 
   // start dead-script
   if(!dead_script.empty()) {
-    Sector::current()->run_script(dead_script, "dead-script");
+    std::istringstream stream(dead_script);
+    Sector::current()->run_script(stream, "dead-script");
   }
 }
 

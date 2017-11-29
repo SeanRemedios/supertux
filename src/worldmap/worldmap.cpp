@@ -145,7 +145,12 @@ WorldMap::~WorldMap()
 
   spawn_points.clear();
 
-  release_scripts(global_vm, scripts, worldmap_table);
+  for(auto& object : scripts) {
+    sq_release(global_vm, &object);
+  }
+  sq_release(global_vm, &worldmap_table);
+
+  sq_collectgarbage(global_vm);
 }
 
 void
@@ -853,7 +858,10 @@ WorldMap::setup()
   using namespace scripting;
 
   sq_pushroottable(global_vm);
-  scripting::store_object(global_vm, "worldmap", worldmap_table);
+  sq_pushstring(global_vm, "worldmap", -1);
+  sq_pushobject(global_vm, worldmap_table);
+  if(SQ_FAILED(sq_createslot(global_vm, -3)))
+    throw SquirrelError(global_vm, "Couldn't set worldmap in roottable");
   sq_pop(global_vm, 1);
 
   //Run default.nut just before init script
@@ -881,7 +889,9 @@ WorldMap::leave()
 
   // remove worldmap_table from roottable
   sq_pushroottable(global_vm);
-  scripting::delete_table_entry(global_vm, "worldmap");
+  sq_pushstring(global_vm, "worldmap", -1);
+  if(SQ_FAILED(sq_deleteslot(global_vm, -2, SQFalse)))
+    throw SquirrelError(global_vm, "Couldn't unset worldmap in roottable");
   sq_pop(global_vm, 1);
 
   GameManager::current()->load_next_worldmap();
@@ -911,53 +921,83 @@ WorldMap::save_state()
     get_table_entry(vm, "state");
     get_or_create_table_entry(vm, "worlds");
 
-    delete_table_entry(vm, map_filename.c_str());
+    sq_pushstring(vm, map_filename.c_str(), map_filename.length());
+    if(SQ_FAILED(sq_deleteslot(vm, -2, SQFalse)))
+    {
+    }
 
     // construct new table for this worldmap
-    begin_table(vm, map_filename.c_str());
+    sq_pushstring(vm, map_filename.c_str(), map_filename.length());
+    sq_newtable(vm);
 
     // store tux
-    begin_table(vm, "tux");
+    sq_pushstring(vm, "tux", -1);
+    sq_newtable(vm);
 
     store_float(vm, "x", tux->get_tile_pos().x);
     store_float(vm, "y", tux->get_tile_pos().y);
     store_string(vm, "back", direction_to_string(tux->back_direction));
-    
-    end_table(vm, "tux");
+
+    if(SQ_FAILED(sq_createslot(vm, -3)))
+    {
+      throw std::runtime_error("failed to create '" + name + "' table entry");
+    }
 
     // sprite change objects:
     if(sprite_changes.size() > 0)
     {
-      begin_table(vm, "sprite-changes");
+      sq_pushstring(vm, "sprite-changes", -1);
+      sq_newtable(vm);
 
       for(const auto& sc : sprite_changes)
       {
         auto key = std::to_string(int(sc->pos.x)) + "_" +
                    std::to_string(int(sc->pos.y));
-        begin_table(vm, key.c_str());
+        sq_pushstring(vm, key.c_str(), -1);
+        sq_newtable(vm);
         store_bool(vm, "show-stay-action", sc->show_stay_action());
-        end_table(vm, key.c_str());
+        if(SQ_FAILED(sq_createslot(vm, -3)))
+        {
+          throw std::runtime_error("failed to create '" + name + "' table entry");
+        }
       }
-      end_table(vm, "sprite-changes");
+      if(SQ_FAILED(sq_createslot(vm, -3)))
+      {
+        throw std::runtime_error("failed to create '" + name + "' table entry");
+      }
     }
 
     // levels...
-    begin_table(vm, "levels");
+    sq_pushstring(vm, "levels", -1);
+    sq_newtable(vm);
 
     for(const auto& level : levels) {
-      begin_table(vm, level->get_name().c_str());
+      sq_pushstring(vm, level->get_name().c_str(), -1);
+      sq_newtable(vm);
+
       store_bool(vm, "solved", level->solved);
       store_bool(vm, "perfect", level->perfect);
       level->statistics.serialize_to_squirrel(vm);
-      end_table(vm, level->get_name().c_str());
+
+      if(SQ_FAILED(sq_createslot(vm, -3)))
+      {
+        throw std::runtime_error("failed to create '" + name + "' table entry");
+      }
     }
-    end_table(vm, "levels");
+
+    if(SQ_FAILED(sq_createslot(vm, -3)))
+    {
+      throw std::runtime_error("failed to create '" + name + "' table entry");
+    }
 
     // overall statistics...
     total_stats.serialize_to_squirrel(vm);
 
     // push world into worlds table
-    end_table(vm, map_filename.c_str());
+    if(SQ_FAILED(sq_createslot(vm, -3)))
+    {
+      throw std::runtime_error("failed to create '" + name + "' table entry");
+    }
   } catch(std::exception& ) {
     sq_settop(vm, oldtop);
   }
