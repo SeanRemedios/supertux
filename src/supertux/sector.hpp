@@ -45,6 +45,7 @@ class Portable;
 class DrawingContext;
 class DisplayEffect;
 class ReaderMapping;
+class TimeTrial;
 
 enum MusicType {
   LEVEL_MUSIC,

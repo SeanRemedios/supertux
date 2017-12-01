@@ -33,6 +33,7 @@
 #include "supertux/level.hpp"
 #include "supertux/sector.hpp"
 #include "supertux/tile.hpp"
+#include "timetrial/timetrial.hpp"
 #include "util/reader_mapping.hpp"
 
 #include <math.h>

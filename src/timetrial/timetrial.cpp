@@ -5,6 +5,7 @@
 
 
 TimeTrial::TimeTrial() :
+	timetrialMode(true),
 	timerAsCoins(true), // Allows timer to be coins
 	badguys(false),	// Turns badguys off
 	coinsToTime(false),	// Normal coins don't contribute to time
@@ -34,4 +35,10 @@ TimeTrial::update(float elapsed_time)
 	    //Player::set_bonus(NO_BONUS, true);
     return;
   }
+}
+
+bool
+TimeTrial::getTimeTrial()
+{
+	return true;
 }

@@ -26,6 +26,7 @@
 
 class Player;
 class Bullet;
+class TimeTrial;
 
 /** Base class for moving sprites that can hurt the Player. */
 class BadGuy : public MovingSprite

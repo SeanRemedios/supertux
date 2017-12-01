@@ -48,6 +48,7 @@
 #include "supertux/spawn_point.hpp"
 #include "supertux/tile.hpp"
 #include "supertux/tile_manager.hpp"
+#include "timetrial/timetrial.hpp"
 #include "trigger/secretarea_trigger.hpp"
 #include "trigger/sequence_trigger.hpp"
 #include "util/file_system.hpp"
@@ -59,6 +60,8 @@ Sector* Sector::_current = 0;
 
 bool Sector::show_collrects = false;
 bool Sector::draw_solids_only = false;
+
+extern bool badguys;
 
 Sector::Sector(Level* parent) :
   level(parent),
@@ -408,6 +411,13 @@ Sector::update_game_objects()
       i != gameobjects.end(); /* nothing */) {
     const GameObjectPtr& object = *i;
 
+    // Time trial mode
+    const auto& bg = dynamic_cast<BadGuy*>(i->get());
+    if (!(bg && TimeTrial::getTimeTrial()) && badguys == false) {
+      ++i;
+      continue;
+    }
+    
     if(object->is_valid()) {
       ++i;
       continue;

@@ -21,6 +21,7 @@ class TimeTrial
 	TimeTrial();
 	~TimeTrial();
 	public:
+		bool timetrialMode;
 		bool timerAsCoins;
 		bool badguys;
 		bool coinsToTime;
@@ -31,6 +32,8 @@ class TimeTrial
 		Player* player;
 
 		virtual void update(float elapsed_time);
+
+		static bool getTimeTrial(); 
 };
 
 #endif
