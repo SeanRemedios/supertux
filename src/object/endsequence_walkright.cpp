@@ -20,6 +20,8 @@
 #include "supertux/screen_manager.hpp"
 #include "supertux/sector.hpp"
 
+bool levelDone = false;
+
 EndSequenceWalkRight::EndSequenceWalkRight() :
   EndSequence(),
   last_x_pos(),
@@ -39,6 +41,7 @@ EndSequenceWalkRight::draw(DrawingContext& /*context*/)
 void
 EndSequenceWalkRight::starting()
 {
+  levelDone = true;
   EndSequence::starting();
   last_x_pos = -1;
   endsequence_timer.start(7.3f * ScreenManager::current()->get_speed());
@@ -47,6 +50,7 @@ EndSequenceWalkRight::starting()
 void
 EndSequenceWalkRight::running(float elapsed_time)
 {
+  levelDone = true;
   EndSequence::running(elapsed_time);
   Player& tux = *Sector::current()->player;
 
@@ -65,6 +69,7 @@ EndSequenceWalkRight::running(float elapsed_time)
 void
 EndSequenceWalkRight::stopping()
 {
+  levelDone = false;
   EndSequence::stopping();
 }
 

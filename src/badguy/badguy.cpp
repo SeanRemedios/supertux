@@ -206,10 +206,10 @@ BadGuy::update(float elapsed_time)
 
   switch(state) {
     case STATE_ACTIVE:
-      is_active_flag = true;
-      if (badguys == false) { // Added by Sean
-        remove_me();          // |
-      }                       // |
+      is_active_flag = true; 
+      if (badguys == false) { // Time Trial mode 
+        remove_me();          
+      }                       
       if (Editor::is_active()) {
         break;
       }

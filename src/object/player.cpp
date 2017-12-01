@@ -44,6 +44,7 @@
 
 extern bool badguys;
 extern bool normalmode;
+extern bool levelDone;
 int prevCoins;
 bool FF = false;
 
