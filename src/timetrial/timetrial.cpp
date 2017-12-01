@@ -1,6 +1,7 @@
 #include "timetrial/timetrial.hpp"
 #include "object/player.hpp"
 #include "supertux/sector.hpp"
+#include "badguy/badguy.hpp"
 
 
 TimeTrial::TimeTrial() :
