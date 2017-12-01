@@ -4,14 +4,14 @@
 
 
 TimeTrial::TimeTrial() :
-	timerAsCoins(true),
-	badguys(false),
-	coinsToTime(false),
-	blockCoinsToTime(true),
-	dying(false),
-	coin_timer(1),
-	dying_timer(),
-	player(0)
+	timerAsCoins(true), // Allows timer to be coins
+	badguys(false),	// Turns badguys off
+	coinsToTime(false),	// Normal coins don't contribute to time
+	blockCoinsToTime(true), // Allows coins in blocks to contribute to time
+	dying(false), 
+	coin_timer(1), // Turns the coin timer on
+	dying_timer(), // Turns the dying timer on
+	player(0) // Allows the mode to access the players
 	{
 		 player->get_status()->add_coins(Sector::current()->player->get_coins()*-1+30);
 	}
